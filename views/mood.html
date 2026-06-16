@@ -299,6 +299,9 @@
 
   <!-- CHART SCRIPT -->
   <script>
+    import { requireAuth } from "../assets/js/authGuard.js";
+    requireAuth();
+    
     const ctx = document.getElementById('moodChart').getContext('2d');
 
     new Chart(ctx, {

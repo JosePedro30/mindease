@@ -172,6 +172,9 @@
 
   <!-- SCRIPT -->
   <script>
+    import { requireAuth } from "../assets/js/authGuard.js";
+    requireAuth();
+    
     let mode = "light";
     let focusTime = 25 * 60;
     let breakTime = 5 * 60;

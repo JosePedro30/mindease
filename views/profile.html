@@ -221,134 +221,102 @@
     </div>
   </div>
 
-        <!-- LOGOUT SCRIPT -->
-        <script type="module">
-        import { logoutUser } from "../auth/auth.js";
+<script type="module">
+  import { requireAuth } from "../assets/js/authGuard.js";
+  import { apiPut } from "../assets/js/api.js";
+  import { logoutUser } from "../assets/js/auth.js";
 
-        function logout() {
-            logoutUser();
-            window.location.href = "../index.html";
-        }
+  // Logout global
+  window.logout = () => {
+    logoutUser();
+    window.location.href = "../index.html";
+  };
 
-        window.logout = logout;
-        </script>
+  // 1) Obter utilizador real
+  const user = await requireAuth();
+  const token = localStorage.getItem("token");
 
-    <script>
-    function loadProfile() {
-        const saved = JSON.parse(localStorage.getItem("profileData")) || {
-        name: "User",
-        email: "user@email.com",
-        photo: null
-        };
+  // 2) Preencher UI com dados reais
+  const nameEl = document.getElementById("profileName");
+  const emailEl = document.getElementById("profileEmail");
+  const avatarFallback = document.getElementById("profileAvatar");
+  const photoImg = document.getElementById("profilePhoto");
 
-        // Nome + Email
-        const nameEl = document.getElementById("profileName");
-        const emailEl = document.getElementById("profileEmail");
-        const avatarFallback = document.getElementById("profileAvatar");
-        const photoImg = document.getElementById("profilePhoto");
+  nameEl.textContent = user.name;
+  emailEl.textContent = user.email;
 
-        if (nameEl) nameEl.textContent = saved.name;
-        if (emailEl) emailEl.textContent = saved.email;
+  if (user.photo) {
+    photoImg.src = user.photo;
+    photoImg.classList.remove("hidden");
+    avatarFallback.classList.add("hidden");
+  } else {
+    avatarFallback.textContent = user.name.charAt(0).toUpperCase();
+    avatarFallback.classList.remove("hidden");
+    photoImg.classList.add("hidden");
+  }
 
-        // Avatar
-        if (saved.photo) {
-        if (photoImg) {
-            photoImg.src = saved.photo;
-            photoImg.classList.remove("hidden");
-        }
-        if (avatarFallback) avatarFallback.classList.add("hidden");
-        } else {
-        if (avatarFallback) {
-            avatarFallback.textContent = saved.name.charAt(0).toUpperCase();
-            avatarFallback.classList.remove("hidden");
-        }
-        if (photoImg) photoImg.classList.add("hidden");
-        }
+  // 3) Abrir modal com dados reais
+  const modal = document.getElementById("editModal");
+  const openBtn = document.getElementById("openEdit");
+  const cancelBtn = document.getElementById("cancelEdit");
+  const saveBtn = document.getElementById("saveEdit");
 
-        // Navbar / Dashboard avatar (se existir)
-        const navAvatar = document.getElementById("navProfilePhoto");
-        const navFallback = document.getElementById("navProfileFallback");
+  openBtn.onclick = () => {
+    document.getElementById("editName").value = user.name;
+    document.getElementById("editEmail").value = user.email;
+    modal.classList.remove("hidden");
+  };
 
-        if (navAvatar) {
-        if (saved.photo) {
-            navAvatar.src = saved.photo;
-            navAvatar.classList.remove("hidden");
-            if (navFallback) navFallback.classList.add("hidden");
-        } else {
-            navAvatar.classList.add("hidden");
-            if (navFallback) {
-            navFallback.textContent = saved.name.charAt(0).toUpperCase();
-            navFallback.classList.remove("hidden");
-            }
-        }
-        }
-    }
+  cancelBtn.onclick = () => modal.classList.add("hidden");
 
-    loadProfile();
+  // 4) Guardar alterações (PUT /auth/update)
+  saveBtn.onclick = async () => {
+    const newName = document.getElementById("editName").value.trim();
+    const newEmail = document.getElementById("editEmail").value.trim();
 
-    // Modal controls
-    const modal = document.getElementById("editModal");
-    const openBtn = document.getElementById("openEdit");
-    const cancelBtn = document.getElementById("cancelEdit");
-    const saveBtn = document.getElementById("saveEdit");
+    if (newName.length < 2) return alert("Nome demasiado curto");
 
-    openBtn.onclick = () => {
-        const saved = JSON.parse(localStorage.getItem("profileData")) || {};
-
-        document.getElementById("editName").value = saved.name;
-        document.getElementById("editEmail").value = saved.email;
-
-        modal.classList.remove("hidden");
+    const updated = {
+      name: newName,
+      email: newEmail,
+      photo: user.photo
     };
 
-    cancelBtn.onclick = () => modal.classList.add("hidden");
+    const newUser = await apiPut("/auth/update", updated, token);
 
-    saveBtn.onclick = () => {
-        const newName = document.getElementById("editName").value.trim();
-        const newEmail = document.getElementById("editEmail").value.trim();
+    localStorage.setItem("currentUser", JSON.stringify(newUser));
 
-        if (newName.length < 2) return alert("Nome demasiado curto");
+    location.reload();
+  };
 
-        const saved = JSON.parse(localStorage.getItem("profileData")) || {};
+  // Fechar modal ao clicar fora
+  modal.onclick = e => {
+    if (e.target === modal) modal.classList.add("hidden");
+  };
 
-        const updated = {
-        name: newName,
-        email: newEmail,
-        photo: saved.photo || null
-        };
+  // 5) Upload de foto real (PUT /auth/update)
+  document.getElementById("photoInput").addEventListener("change", e => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-        localStorage.setItem("profileData", JSON.stringify(updated));
+    const reader = new FileReader();
+    reader.onload = async event => {
+      const updated = {
+        name: user.name,
+        email: user.email,
+        photo: event.target.result
+      };
 
-        loadProfile();
-        modal.classList.add("hidden");
+      const newUser = await apiPut("/auth/update", updated, token);
+
+      localStorage.setItem("currentUser", JSON.stringify(newUser));
+
+      location.reload();
     };
 
-    modal.onclick = (e) => {
-        if (e.target === modal) modal.classList.add("hidden");
-    };
-
-    // PHOTO UPLOAD (profile card)
-    document.getElementById("photoInput").addEventListener("change", function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = function(event) {
-        const saved = JSON.parse(localStorage.getItem("profileData")) || {};
-
-        const updated = {
-            name: saved.name,
-            email: saved.email,
-            photo: event.target.result
-        };
-
-        localStorage.setItem("profileData", JSON.stringify(updated));
-        loadProfile();
-        };
-        reader.readAsDataURL(file);
-    });
-    </script>
-
+    reader.readAsDataURL(file);
+  });
+</script>
 
 </body>
 </html>

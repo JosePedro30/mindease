@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { readDB, writeDB } from "../utils/db.js";
 import { v4 as uuid } from "uuid";
+import { authMiddleware } from "../middleware/auth.js";
 
 const router = express.Router();
 const JWT_SECRET = "super-secret-mindease"; // em real seria env
@@ -75,5 +76,45 @@ router.post("/login", async (req, res) => {
     }
   });
 });
+
+router.get("/me", authMiddleware, (req, res) => {
+  const db = readDB();
+  const user = db.users.find(u => u.id === req.user.id);
+
+  if (!user)
+    return res.status(404).json({ message: "User not found" });
+
+  res.json({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    photo: user.photo,
+    preferences: user.preferences
+  });
+});
+
+router.put("/update", authMiddleware, (req, res) => {
+  const db = readDB();
+  const user = db.users.find(u => u.id === req.user.id);
+
+  if (!user)
+    return res.status(404).json({ message: "User not found" });
+
+  const { name, email, photo } = req.body;
+
+  if (name) user.name = name;
+  if (email) user.email = email;
+  if (photo) user.photo = photo;
+
+  writeDB(db);
+
+  res.json({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    photo: user.photo
+  });
+});
+
 
 export default router;

@@ -277,6 +277,9 @@
   </div>
 
   <script>
+    import { requireAuth } from "../assets/js/authGuard.js";
+    requireAuth();
+    
     // Sidebar active
     const currentPage = window.location.pathname.split("/").pop();
     document.querySelectorAll("aside a").forEach(link => {
